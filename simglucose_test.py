@@ -10,63 +10,16 @@ from simglucose.simulation.sim_engine import SimObj, sim, batch_sim
 from datetime import timedelta
 from datetime import datetime
 import numpy as np
-from util import pickle_save
-from arm_distribution_generator import pareto
-import matplotlib.pyplot as plt
-from mpl_toolkits.axisartist.axislines import SubplotZero
-plt.ioff()
-
-def is_pareto_efficient_simple(costs): #minimization
-    is_efficient = np.ones(costs.shape[0], dtype = bool)
-    for i, c in enumerate(costs):
-        if is_efficient[i]:
-            is_efficient[is_efficient] = np.any(costs[is_efficient]<c, axis=1)  # Keep any point with a lower cost
-            is_efficient[i] = True  # And keep self
-    return is_efficient
-
-def plot_pareto(pareto_opt_ind, dominated_ind, Y):
-    fig = plt.figure()
-    ax = SubplotZero(fig, 111)
-    fig.add_subplot(ax)
-
-    ax.scatter(Y[pareto_opt_ind, 0], Y[pareto_opt_ind,1], color= 'red', alpha= 0.2)
-    ax.scatter(Y[dominated_ind, 0], Y[dominated_ind,1], color= 'blue', alpha= 0.2)
-    for direction in ["xzero", "yzero"]:
-        # adds arrows at the ends of each axis
-        ax.axis[direction].set_axisline_style("-|>")
-
-        # adds X and Y-axis from the origin
-        ax.axis[direction].set_visible(True)
-
-    for direction in ["left", "right", "bottom", "top"]:
-        # hides borders
-        ax.axis[direction].set_visible(False)
-
-    ax.set_ylim(ymin=0)
-    ax.set_xlim(xmin=0)
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    plt.xlabel("X axis label")
-    plt.ylabel("Y axis label")
-
-    plt.rcParams['pdf.fonttype'] = 42
-    plt.rcParams['xtick.major.pad'] = '5'
-    plt.rcParams['ytick.major.pad'] = '5'
-
-    plt.savefig('test.pdf', bbox_inches = 'tight', pad_inches = 1)
 
 
 
 def get_true_bg_levels(food):
     # --------- Create Random Scenario --------------
-    arms= np.linspace(2, 30, 29, dtype= int)
-    K = 29
 
     after_90_list = []
     after_180_list= []
 
-    for bolus_tot in arms:
+    for bolus_tot in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]:
         # specify start_time as the beginning of today
         now = datetime.now()
         start_time = datetime.combine(now.date(), datetime.min.time())
@@ -74,7 +27,7 @@ def get_true_bg_levels(food):
         food= 35  #carb = food/3 * 3 = food
         # bolus_tot= 6
         basal = 0
-        patient_name= 'adult#002'
+        patient_name= 'adult#001'
 
         bolus= bolus_tot/3 #total = bolus * 3
         # --------- Create Custom Scenario --------------
@@ -104,33 +57,10 @@ def get_true_bg_levels(food):
 
         after_90_list.append(res_numpy[30][0])
         after_180_list.append(res_numpy[60][0])
+        dist_90 = np.abs(np.array(after_90_list)-140)
+        dist_180= np.abs(np.array(after_180_list)-140)
 
-    dist_90 = -np.abs(np.array(after_90_list)-140)
-    dist_180= -np.abs(np.array(after_180_list)-140)
-
-    Y = np.zeros([K, 2])
-    Y[:, 0] = dist_90[:]
-    Y[:, 1] = dist_180[:]
-    pareto_opt_ind, dominated_ind= pareto(Y, K)
-    plot_pareto(pareto_opt_ind, dominated_ind, -Y)
-
-
-
-    x = np.zeros([K,1])
-    x[:, 0]= arms
-        # is_pareto_efficient_simple(-Y)
-    diabetes_dict= dict()
-    diabetes_dict['patient'] = patient_name
-    diabetes_dict['food']= food
-    diabetes_dict['y'] = Y
-    diabetes_dict['x'] = x
-    diabetes_dict['after_90_list'] = after_90_list
-    diabetes_dict['after_180_list'] = after_180_list
-    pickle_save('diabetes_dict.pickle', diabetes_dict)
-
-    return after_90_list, after_180_list
-
-
+        return after_90_list, after_180_list
 '''
 # --------- batch simulation --------------
 # Re-initialize simulation objects
